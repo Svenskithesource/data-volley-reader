@@ -2,7 +2,7 @@ use std::io::{self, BufReader, Read};
 
 use data_formats::{read_scout_file, ScoutFile};
 
-mod data_formats;
+pub mod data_formats;
 
 pub fn read(mut input: impl Read) -> Result<ScoutFile, io::Error> {
     read_scout_file(&mut input)

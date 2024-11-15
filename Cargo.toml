@@ -4,7 +4,7 @@ license = "MIT"
 description = "A library for parsing data from the Data volley format (.dvw)."
 repository = "https://github.com/Svenskithesource/data-volley-reader"
 readme = "README.md"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
