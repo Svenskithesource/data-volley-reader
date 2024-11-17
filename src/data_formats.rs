@@ -620,26 +620,26 @@ pub fn read_game(reader: &mut Cursor<String>) -> Result<Game, std::io::Error> {
     let mut data = String::new();
     reader.read_line(&mut data)?;
 
-    let mut splitted = data.split(";").map(|s| s.trim().to_string());
-
+    let splitted = data.split(";").map(|s| s.trim().to_string()).collect::<Vec<String>>();
+    dbg!(&splitted);
     let (date, time, season, game_type) = (
         splitted
-            .nth(0)
+            .get(0)
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid date"))?
             .trim()
             .to_string(),
         splitted
-            .nth(1)
+            .get(1)
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid time"))?
             .trim()
             .to_string(),
         splitted
-            .nth(3)
+            .get(2)
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid season"))?
             .trim()
             .to_string(),
         splitted
-            .nth(4)
+            .get(5)
             .ok_or_else(|| {
                 std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid game type")
             })?
