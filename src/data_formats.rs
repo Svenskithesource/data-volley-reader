@@ -82,6 +82,16 @@ pub enum TeamSide {
     Visiting,
 }
 
+impl TeamSide {
+    pub fn from_char(c: char) -> TeamSide {
+        match c {
+            '*' => TeamSide::Home,
+            'a' => TeamSide::Visiting,
+            _ => TeamSide::Home, // TODO: Return an error instead of a default value
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Skill {
     Serve,
@@ -115,15 +125,64 @@ pub enum Evaluation {
     Hashtag,
 }
 
+// See page 41 of the Data Volley Scout manual.
+#[derive(Debug)]
+pub enum CodeExplanation {
+    InvalidCode,
+    ManualCode(ManualCodeExplanation),
+    AutomaticCode(AutomaticCodeExplanation),
+    GreenCode(GreenCodePoint),
+    SetEnd(u8),
+}
+
 // From page 27 of the Data Volley Scout manual (https://dataprojectwebsoftware.blob.core.windows.net/software/dvw4media/DataVolleyMedia_handbook.pdf)
 // Only parses the main code, not the advanced and extended codes
 #[derive(Debug)]
-pub struct CodeExplanation {
+pub struct ManualCodeExplanation {
     pub team: TeamSide,
     pub player_number: u8,
     pub skill: Skill,
     pub action_type: ActionType,
     pub evaluation: Evaluation,
+}
+
+#[derive(Debug)]
+pub struct GreenCodePoint {
+    pub team: TeamSide,
+}
+
+#[derive(Debug)]
+pub struct SetterPosition {
+    pub team: TeamSide,
+    pub setter_position: u8,
+}
+
+#[derive(Debug)]
+pub struct Point {
+    pub team: TeamSide,
+    pub home_score: u8,
+    pub visiting_score: u8,
+}
+
+#[derive(Debug)]
+pub struct SetterReplacement {
+    pub team: TeamSide,
+    pub setter_number: u8,
+}
+
+#[derive(Debug)]
+pub struct Substitution {
+    pub team: TeamSide,
+    pub player_out: u8,
+    pub player_in: u8,
+}
+
+#[derive(Debug)]
+pub enum AutomaticCodeExplanation {
+    SetterPosition(SetterPosition),
+    Point(Point),
+    SetterReplacement(SetterReplacement),
+    Substitution(Substitution),
 }
 
 #[derive(Debug)]
@@ -249,62 +308,132 @@ impl CodeExplanation {
     pub fn new(code: String) -> CodeExplanation {
         let code = code.trim().chars().collect::<Vec<char>>();
 
-        if code.len() < 6 {
-            return CodeExplanation {
-                team: TeamSide::Home,
-                player_number: 0,
-                skill: Skill::FreeBall,
-                action_type: ActionType::Other,
-                evaluation: Evaluation::Equal,
-            }; // TODO: Return an error instead of a default value
+        if code.len() < 3 {
+            return CodeExplanation::InvalidCode;
         }
 
-        let team = match code[0] {
-            '*' => TeamSide::Home,
-            'a' => TeamSide::Visiting,
-            _ => TeamSide::Home, // TODO: Return an error instead of a default value
-        };
+        let team = TeamSide::from_char(code[0]);
 
-        let player_number = code[1..3].iter().collect::<String>().parse().unwrap_or(0);
+        let player_number: Result<i32, _> = code[1..3].iter().collect::<String>().parse();
 
-        let skill = match code[3] {
-            'S' => Skill::Serve,
-            'R' => Skill::Reception,
-            'A' => Skill::Attack,
-            'B' => Skill::Block,
-            'D' => Skill::Dig,
-            'E' => Skill::Set,
-            'F' => Skill::FreeBall,
-            _ => Skill::FreeBall, // TODO: Return an error instead of a default value
-        };
+        if player_number.is_ok() {
+            let skill = match code[3] {
+                'S' => Skill::Serve,
+                'R' => Skill::Reception,
+                'A' => Skill::Attack,
+                'B' => Skill::Block,
+                'D' => Skill::Dig,
+                'E' => Skill::Set,
+                'F' => Skill::FreeBall,
+                _ => Skill::FreeBall, // TODO: Return an error instead of a default value
+            };
 
-        let action_type = match code[4] {
-            'H' => ActionType::High,
-            'M' => ActionType::Medium,
-            'Q' => ActionType::Quick,
-            'T' => ActionType::Tense,
-            'S' => ActionType::Super,
-            'N' => ActionType::Fast,
-            'O' => ActionType::Other,
-            _ => ActionType::Other, // TODO: Return an error instead of a default value
-        };
+            let action_type = match code[4] {
+                'H' => ActionType::High,
+                'M' => ActionType::Medium,
+                'Q' => ActionType::Quick,
+                'T' => ActionType::Tense,
+                'S' => ActionType::Super,
+                'N' => ActionType::Fast,
+                'O' => ActionType::Other,
+                _ => ActionType::Other, // TODO: Return an error instead of a default value
+            };
 
-        let evaluation = match code[5] {
-            '=' => Evaluation::Equal,
-            '/' => Evaluation::Slash,
-            '-' => Evaluation::Minus,
-            '!' => Evaluation::Exclamation,
-            '+' => Evaluation::Plus,
-            '#' => Evaluation::Hashtag,
-            _ => Evaluation::Equal, // TODO: Return an error instead of a default value
-        };
+            let evaluation = match code[5] {
+                '=' => Evaluation::Equal,
+                '/' => Evaluation::Slash,
+                '-' => Evaluation::Minus,
+                '!' => Evaluation::Exclamation,
+                '+' => Evaluation::Plus,
+                '#' => Evaluation::Hashtag,
+                _ => Evaluation::Equal, // TODO: Return an error instead of a default value
+            };
 
-        CodeExplanation {
-            team,
-            player_number,
-            skill,
-            action_type,
-            evaluation,
+            CodeExplanation::ManualCode(ManualCodeExplanation {
+                team,
+                player_number: player_number.unwrap() as u8,
+                skill,
+                action_type,
+                evaluation,
+            })
+        } else {
+            match code[1] {
+                'z' => {
+                    let team = TeamSide::from_char(code[0]);
+                    let n = code[2].to_digit(10);
+
+                    match n {
+                        Some(n) => CodeExplanation::AutomaticCode(
+                            AutomaticCodeExplanation::SetterPosition(SetterPosition {
+                                team,
+                                setter_position: n as u8,
+                            }),
+                        ),
+                        _ => CodeExplanation::InvalidCode,
+                    }
+                }
+                'p' => {
+                    let team = TeamSide::from_char(code[0]);
+                    let home_score = code[2..4].iter().collect::<String>().parse();
+                    let visiting_score = code[5..7].iter().collect::<String>().parse();
+
+                    match (home_score, visiting_score) {
+                        (Ok(home_score), Ok(visiting_score)) => {
+                            CodeExplanation::AutomaticCode(AutomaticCodeExplanation::Point(Point {
+                                team,
+                                home_score,
+                                visiting_score,
+                            }))
+                        }
+                        _ => CodeExplanation::InvalidCode,
+                    }
+                }
+                'P' => {
+                    let team = TeamSide::from_char(code[0]);
+                    let setter_number = code[2..4].iter().collect::<String>().parse();
+
+                    dbg!(&setter_number);
+
+                    match setter_number {
+                        Ok(setter_number) => CodeExplanation::AutomaticCode(
+                            AutomaticCodeExplanation::SetterReplacement(SetterReplacement {
+                                team,
+                                setter_number,
+                            }),
+                        ),
+                        _ => CodeExplanation::InvalidCode,
+                    }
+                }
+                'c' => {
+                    let team = TeamSide::from_char(code[0]);
+                    let player_out = code[2..4].iter().collect::<String>().parse();
+                    let player_in = code[5..7].iter().collect::<String>().parse();
+
+                    match (player_out, player_in) {
+                        (Ok(player_out), Ok(player_in)) => CodeExplanation::AutomaticCode(
+                            AutomaticCodeExplanation::Substitution(Substitution {
+                                team,
+                                player_out,
+                                player_in,
+                            }),
+                        ),
+                        _ => CodeExplanation::InvalidCode,
+                    }
+                }
+                '*' => {
+                    if code[0] == '*' && code[3..6].iter().collect::<String>() == "set" {
+                        let set = code[2].to_digit(10);
+
+                        match set {
+                            Some(set) => CodeExplanation::SetEnd(set as u8),
+                            _ => CodeExplanation::InvalidCode,
+                        }
+                    } else {
+                        CodeExplanation::InvalidCode
+                    }
+                }
+                _ => CodeExplanation::InvalidCode,
+            }
         }
     }
 }
