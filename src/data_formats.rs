@@ -62,6 +62,7 @@ pub struct Player {
 #[derive(Debug)]
 pub struct Action {
     pub code: String,
+    pub code_explanation: CodeExplanation,
     pub point_phase: String,
     pub attack_phase: String,
     pub start_coordinate: String,
@@ -73,6 +74,56 @@ pub struct Action {
     pub visiting_rotation: u8,
     pub video_file_number: u8,
     pub video_time: String,
+}
+
+#[derive(Debug)]
+pub enum TeamSide {
+    Home,
+    Visiting,
+}
+
+#[derive(Debug)]
+pub enum Skill {
+    Serve,
+    Reception,
+    Attack,
+    Block,
+    Dig,
+    Set,
+    FreeBall,
+}
+
+#[derive(Debug)]
+pub enum ActionType {
+    High,
+    Medium,
+    Quick,
+    Tense,
+    Super,
+    Fast,
+    Other,
+}
+
+// See page 30 of the Data Volley Scout manual for more information on evaluations per action type
+#[derive(Debug)]
+pub enum Evaluation {
+    Equal,
+    Slash,
+    Minus,
+    Exclamation,
+    Plus,
+    Hashtag,
+}
+
+// From page 27 of the Data Volley Scout manual (https://dataprojectwebsoftware.blob.core.windows.net/software/dvw4media/DataVolleyMedia_handbook.pdf)
+// Only parses the main code, not the advanced and extended codes
+#[derive(Debug)]
+pub struct CodeExplanation {
+    pub team: TeamSide,
+    pub player_number: u8,
+    pub skill: Skill,
+    pub action_type: ActionType,
+    pub evaluation: Evaluation,
 }
 
 #[derive(Debug)]
@@ -194,6 +245,70 @@ impl Player {
     }
 }
 
+impl CodeExplanation {
+    pub fn new(code: String) -> CodeExplanation {
+        let code = code.trim().chars().collect::<Vec<char>>();
+
+        if code.len() < 6 {
+            return CodeExplanation {
+                team: TeamSide::Home,
+                player_number: 0,
+                skill: Skill::FreeBall,
+                action_type: ActionType::Other,
+                evaluation: Evaluation::Equal,
+            }; // TODO: Return an error instead of a default value
+        }
+
+        let team = match code[0] {
+            '*' => TeamSide::Home,
+            'a' => TeamSide::Visiting,
+            _ => TeamSide::Home, // TODO: Return an error instead of a default value
+        };
+
+        let player_number = code[1..3].iter().collect::<String>().parse().unwrap_or(0);
+
+        let skill = match code[3] {
+            'S' => Skill::Serve,
+            'R' => Skill::Reception,
+            'A' => Skill::Attack,
+            'B' => Skill::Block,
+            'D' => Skill::Dig,
+            'E' => Skill::Set,
+            'F' => Skill::FreeBall,
+            _ => Skill::FreeBall, // TODO: Return an error instead of a default value
+        };
+
+        let action_type = match code[4] {
+            'H' => ActionType::High,
+            'M' => ActionType::Medium,
+            'Q' => ActionType::Quick,
+            'T' => ActionType::Tense,
+            'S' => ActionType::Super,
+            'N' => ActionType::Fast,
+            'O' => ActionType::Other,
+            _ => ActionType::Other, // TODO: Return an error instead of a default value
+        };
+
+        let evaluation = match code[5] {
+            '=' => Evaluation::Equal,
+            '/' => Evaluation::Slash,
+            '-' => Evaluation::Minus,
+            '!' => Evaluation::Exclamation,
+            '+' => Evaluation::Plus,
+            '#' => Evaluation::Hashtag,
+            _ => Evaluation::Equal, // TODO: Return an error instead of a default value
+        };
+
+        CodeExplanation {
+            team,
+            player_number,
+            skill,
+            action_type,
+            evaluation,
+        }
+    }
+}
+
 impl Action {
     pub fn new(
         code: String,
@@ -210,7 +325,8 @@ impl Action {
         video_time: String,
     ) -> Action {
         Action {
-            code,
+            code: code.clone(),
+            code_explanation: CodeExplanation::new(code),
             point_phase,
             attack_phase,
             start_coordinate,
@@ -486,7 +602,10 @@ macro_rules! set_quarter {
                 )
             })?;
 
-            let (home, visiting) = (home.trim().parse().unwrap(), visiting.trim().parse().unwrap());
+            let (home, visiting) = (
+                home.trim().parse().unwrap(),
+                visiting.trim().parse().unwrap(),
+            );
 
             SetPoints::new(home, visiting)
         }
