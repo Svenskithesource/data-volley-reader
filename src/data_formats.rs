@@ -373,6 +373,10 @@ impl CodeExplanation {
                     }
                 }
                 'p' => {
+                    if code.len() < 7 {
+                        return CodeExplanation::InvalidCode;
+                    }
+
                     let team = TeamSide::from_char(code[0]);
                     let home_score = code[2..4].iter().collect::<String>().parse();
                     let visiting_score = code[5..7].iter().collect::<String>().parse();
@@ -390,9 +394,12 @@ impl CodeExplanation {
                 }
                 'P' => {
                     let team = TeamSide::from_char(code[0]);
-                    let setter_number = code[2..4].iter().collect::<String>().parse();
 
-                    dbg!(&setter_number);
+                    let setter_number = if code.len() < 4 {
+                        code[2].to_string().parse()
+                    } else {
+                        code[2..4].iter().collect::<String>().parse()
+                    };
 
                     match setter_number {
                         Ok(setter_number) => CodeExplanation::AutomaticCode(
