@@ -621,7 +621,7 @@ pub fn read_game(reader: &mut Cursor<String>) -> Result<Game, std::io::Error> {
     reader.read_line(&mut data)?;
 
     let splitted = data.split(";").map(|s| s.trim().to_string()).collect::<Vec<String>>();
-    dbg!(&splitted);
+    
     let (date, time, season, game_type) = (
         splitted
             .get(0)
