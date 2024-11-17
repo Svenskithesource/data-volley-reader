@@ -629,7 +629,7 @@ pub fn read_game(reader: &mut Cursor<String>) -> Result<Game, std::io::Error> {
             .trim()
             .to_string(),
         splitted
-            .nth(2)
+            .nth(1)
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid time"))?
             .trim()
             .to_string(),
