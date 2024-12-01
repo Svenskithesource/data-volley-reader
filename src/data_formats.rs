@@ -502,9 +502,9 @@ impl ScoutFile {
     }
 }
 
-pub fn read_scout_file(mut input: impl Read) -> Result<ScoutFile, std::io::Error> {
-    let mut buffer = String::new();
-    input.read_to_string(&mut buffer).unwrap();
+pub fn read_scout_file(input: impl Read) -> Result<ScoutFile, std::io::Error> {
+    let input = input.bytes().flatten().collect::<Vec<u8>>();
+    let buffer = String::from_utf8_lossy(&input).to_string();
 
     let mut reader = Cursor::new(buffer);
 
